@@ -1,0 +1,20 @@
+[project]
+name = "elte-webscraping"
+version = "0.1.0"
+description = "Webscraping task for ELTE: segmentation of the Polish parliament's speaker's speeches"
+authors = [
+    {name = "Levente Lajkó"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+package-mode = false
+requires-python = ">=3.13"
+dependencies = [
+    "requests (>=2.32.5,<3.0.0)",
+    "selenium (>=4.35.0,<5.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
