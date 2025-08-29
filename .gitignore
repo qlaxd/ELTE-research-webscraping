@@ -11,3 +11,5 @@ logs/
 .vscode/
 .idea/
 cache/
+.env.example
+.codacy/codacy.yaml

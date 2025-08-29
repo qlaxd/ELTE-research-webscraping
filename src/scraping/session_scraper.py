@@ -1,7 +1,7 @@
 import logging
 from typing import Optional
 
-from .web_client import WebClient
+from .playwright_client import PlaywrightClient
 from .cache_manager import CacheManager
 
 logger = logging.getLogger(__name__)
@@ -9,15 +9,15 @@ logger = logging.getLogger(__name__)
 class SessionScraper:
     """Scrapes and caches parliamentary session pages."""
 
-    def __init__(self, web_client: WebClient, cache_manager: CacheManager):
+    def __init__(self, playwright_client: PlaywrightClient, cache_manager: CacheManager):
         """
         Initializes the SessionScraper.
 
         Args:
-            web_client: An instance of WebClient for making HTTP requests.
+            playwright_client: An instance of PlaywrightClient for making HTTP requests.
             cache_manager: An instance of CacheManager for caching content.
         """
-        self.web_client = web_client
+        self.web_client = playwright_client
         self.cache_manager = cache_manager
 
     def fetch_session_html(self, session_url: str) -> Optional[str]:

@@ -4,7 +4,7 @@ import pandas as pd
 from tqdm import tqdm
 
 # Import all necessary components from other modules
-from src.scraping.web_client import WebClient
+from src.scraping.playwright_client import PlaywrightClient
 from src.scraping.cache_manager import CacheManager
 from src.scraping.session_scraper import SessionScraper
 from src.parsing.html_parser import HTMLParser
@@ -29,12 +29,11 @@ class DatasetBuilder:
         self.rules_path = Path('config/scraping_rules.yaml')
 
         # Initialize the components needed for the pipeline
-        web_client = WebClient(
-            user_agent=config['scraping']['user_agent'],
-            rate_limit_delay=config['scraping']['rate_limit_delay']
+        self.playwright_client = PlaywrightClient(
+            headless=self.config['scraping'].get('headless', False)
         )
         cache_manager = CacheManager(cache_dir=Path(config['paths']['cache_dir']))
-        self.session_scraper = SessionScraper(web_client, cache_manager)
+        self.session_scraper = SessionScraper(self.playwright_client, cache_manager)
 
     def _process_session(self, session_df: pd.DataFrame) -> pd.DataFrame:
         """
