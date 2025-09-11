@@ -13,7 +13,7 @@ processing:
   date_format: '%Y.%m.%d'
 
 paths:
-  input_dir: 'data/input'
+  input_dir: 'data'
   output_dir: 'data/output'
   cache_dir: 'data/cache'
   log_dir: 'data/logs'
