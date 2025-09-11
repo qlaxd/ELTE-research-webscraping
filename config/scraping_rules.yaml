@@ -1,0 +1,18 @@
+# Scraping rules for the Sejm website.
+# The structure of the website might have changed over the years.
+# This file defines CSS selectors for different year ranges to locate key content.
+
+# Default rules, assuming the structure is consistent with the 2010 example.
+# More specific year ranges can be added if variations are found.
+- year_range: [1991, 2011]
+  selectors:
+    # Selector for the main content area containing the transcript.
+    # Based on the documentation, this is a table cell.
+    content_container: 'td[width="100%"][valign="top"]'
+    
+    # Selector for the hyperlinks that point to individual speeches and act as delimiters.
+    speech_link: 'a[href*="OpenDocument"]'
+    
+    # A pattern to identify the start of the main speaker's (Marszałek) concatenated speech block.
+    # This is not a selector but a text pattern to look for.
+    speaker_block_start_pattern: 'Marszałek'

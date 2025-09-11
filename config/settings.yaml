@@ -1,0 +1,19 @@
+scraping:
+  base_url: 'https://orka2.sejm.gov.pl'
+  timeout: 30
+  retry_count: 3
+  retry_delay: 1.0
+  rate_limit_delay: 0.5
+  user_agent: 'Polish Parliament Speech Scraper - For academic research purposes'
+
+processing:
+  chunk_size: 1000
+  encoding: 'utf-8'
+  csv_delimiter: ','
+  date_format: '%Y.%m.%d'
+
+paths:
+  input_dir: 'data/input'
+  output_dir: 'data/output'
+  cache_dir: 'data/cache'
+  log_dir: 'data/logs'
