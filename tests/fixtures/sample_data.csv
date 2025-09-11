@@ -1,0 +1,4 @@
+text,speaker_name,chair,agenda_item,place_agenda,date,url
+"To jest cały, długi tekst Marszałka, który zostanie podzielony. Tu jest pierwsza część. Tu jest druga część.","Marszałek Ewa Kierzkowska",1,"Otwarcie posiedzenia.",1,"2010.08.06","http://example.com/2010-08-06"
+"Dziękuję bardzo.","Prezydent Bronisław Komorowski",0,"Ślubowanie Prezydenta RP.",2,"2010.08.06","http://example.com/speech/1"
+"Dziękuję.","Sekretarz Beata Bublewicz",0,"Ślubowanie Prezydenta RP.",3,"2010.08.06","http://example.com/speech/2"
