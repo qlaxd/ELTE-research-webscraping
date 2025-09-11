@@ -35,7 +35,7 @@ def run_pipeline():
         input_df = csv_handler.read_csv(input_filepath)
         input_df = input_df.rename(columns={'date_presented': 'date'})
         # Convert date column to datetime objects for processing
-        input_df['date'] = pd.to_datetime(input_df['date'], format='%Y-%m-%d')
+        input_df['date'] = pd.to_datetime(input_df['date'], format='mixed')
     except (FileNotFoundError, ValueError) as e:
         logger.exception(f"Failed to read or parse the input CSV file. Pipeline aborted. Error: {e}")
         return
