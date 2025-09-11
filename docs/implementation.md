@@ -43,7 +43,7 @@ In `src/data/models.py`, use Pydantic to define data structures.
 
 ### Step 8: Implement CSV Handler
 In `src/data/csv_handler.py`, create a `CSVHandler` class.
-- **Methods**: Implement `read_csv` (with support for chunking), `write_csv` (ensuring parent directories exist), `validate_columns` to check for required headers, and `process_in_chunks` to apply a function to a large CSV file piece by piece. Handle potential `FileNotFoundError` and `UnicodeDecodeError`.
+- **Methods**: Implement `2` (with support for chunking), `write_csv` (ensuring parent directories exist), `validate_columns` to check for required headers, and `process_in_chunks` to apply a function to a large CSV file piece by piece. Handle potential `FileNotFoundError` and `UnicodeDecodeError`.
 
 ### Step 9: Create Data Validator
 In `src/data/validator.py`, create a `DataValidator` class.

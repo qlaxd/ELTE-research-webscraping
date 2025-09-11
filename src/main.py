@@ -33,8 +33,9 @@ def run_pipeline():
         # For now, we assume the file is small enough to be read into memory.
         # For larger files, chunking would be necessary here.
         input_df = csv_handler.read_csv(input_filepath)
+        input_df = input_df.rename(columns={'date_presented': 'date'})
         # Convert date column to datetime objects for processing
-        input_df['date'] = pd.to_datetime(input_df['date'], format='%Y.%m.%d')
+        input_df['date'] = pd.to_datetime(input_df['date'], format='%Y-%m-%d')
     except (FileNotFoundError, ValueError) as e:
         logger.exception(f"Failed to read or parse the input CSV file. Pipeline aborted. Error: {e}")
         return
@@ -51,7 +52,7 @@ def run_pipeline():
     if reconstructed_df is not None and not reconstructed_df.empty:
         logger.info(f"Saving reconstructed dataset to: {output_filepath}")
         # Convert datetime back to string for consistent CSV format
-        reconstructed_df['date'] = reconstructed_df['date'].dt.strftime('%Y.%m.%d')
+        reconstructed_df['date'] = reconstructed_df['date'].dt.strftime('%Y-%m-%d')
         csv_handler.write_csv(reconstructed_df, output_filepath)
         logger.info("--- Pipeline finished successfully! ---")
     else:
