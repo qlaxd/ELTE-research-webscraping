@@ -48,12 +48,19 @@ class DatasetBuilder:
         """
         # Find the main speaker row
         speaker_rows = session_df[session_df['chair'] == 1]
-        if len(speaker_rows) != 1:
-            logger.warning(f"Session on date {session_df['date'].iloc[0]} has {len(speaker_rows)} speaker rows. Skipping.")
-            return session_df # Return original if no single speaker row is found
+        if len(speaker_rows) == 0:
+            logger.warning(f"Session on date {session_df['date'].iloc[0]} has no speaker rows. Skipping.")
+            return session_df # Return original if no speaker row is found
+
+        if len(speaker_rows) > 1:
+            logger.info(f"Session on date {session_df['date'].iloc[0]} has {len(speaker_rows)} speaker rows. Processing only the first one.")
         
         speaker_row = speaker_rows.iloc[0]
-        session_url = speaker_row.get('url') # Assumes a 'url' column exists
+        
+        # All other rows, including other speaker rows
+        other_rows = session_df[session_df.index != speaker_row.name]
+
+        session_url = speaker_row.get('source') # Assumes a 'source' column exists
         if not session_url or not isinstance(session_url, str):
             logger.warning(f"No valid URL found for session on {speaker_row['date']}. Skipping.")
             return session_df
@@ -86,10 +93,9 @@ class DatasetBuilder:
         # For now, this method demonstrates the pipeline up to segment creation.
         logger.info("Placeholder for row insertion and re-ordering.")
         
-        other_speeches = session_df[session_df['chair'] == 0].to_dict('records')
-        reconstructed_rows = other_speeches + new_speaker_rows
+        reconstructed_rows = pd.concat([other_rows, pd.DataFrame(new_speaker_rows)], ignore_index=True)
         
-        return pd.DataFrame(reconstructed_rows)
+        return reconstructed_rows
 
     def process_dataset(self, df: pd.DataFrame) -> pd.DataFrame:
         """
