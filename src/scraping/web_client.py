@@ -4,7 +4,8 @@ from typing import Dict, Optional
 
 import requests
 from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.util.retry import Retry
+from urllib3.util.retry import Retry
+import selenium.webdriver as webdriver
 
 logger = logging.getLogger(__name__)
 
