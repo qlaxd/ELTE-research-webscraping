@@ -24,7 +24,7 @@ Install the dependencies into the virtual environment.
 
 ### Step 5: Create Configuration Files
 In the `config/` directory, create `settings.yaml` to manage application settings.
-- **Structure**: Use nested keys: `scraping`, `processing`, `paths`, and `logging`.
+- **Structure**: Use nested keys: `scraping`, `processing`, `paths`, and `logging`.ad
 - **Scraping**: `base_url`, `timeout` (e.g., 30), `retry_count` (e.g., 3), `retry_delay` (e.g., 1.0), `rate_limit_delay` (e.g., 0.5), and a descriptive `user_agent`.
 - **Processing**: `chunk_size` for CSV reading (e.g., 1000), `encoding` ('utf-8'), `csv_delimiter` (','), and `date_format` ('%Y.%m.%d').
 - **Paths**: `input_dir`, `output_dir`, `cache_dir`, and `log_dir`.
@@ -35,7 +35,7 @@ Create a `.env.example` file in the root directory to serve as a template for en
 ---
 
 ## Phase 2: Data Models and Core Utilities
-
+ad
 ### Step 7: Define Data Models
 In `src/data/models.py`, use Pydantic to define data structures.
 - **Speech Model**: A `Speech(BaseModel)` class with fields: `text: str`, `speaker_name: str`, `chair: int` (0 or 1), `agenda_item: Optional[str]`, `place_agenda: int`, `date: datetime`, and `session_id: str`. Add validators to clean text (strip whitespace, remove HTML) and validate field values.
