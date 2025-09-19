@@ -7,6 +7,7 @@ from tqdm import tqdm
 from src.scraping.playwright_client import PlaywrightClient
 from src.scraping.cache_manager import CacheManager
 from src.scraping.session_scraper import SessionScraper
+from src.scraping.rules_loader import load_scraping_rules
 from src.parsing.html_parser import HTMLParser
 from src.parsing.speech_extractor import SpeechExtractor
 from src.segmentation.metadata_manager import MetadataManager
@@ -32,6 +33,7 @@ class DatasetBuilder:
         self.playwright_client = PlaywrightClient(
             headless=self.config['scraping'].get('headless', False)
         )
+        self.playwright_client.start() # Start the browser
         cache_manager = CacheManager(cache_dir=Path(config['paths']['cache_dir']))
         self.session_scraper = SessionScraper(self.playwright_client, cache_manager)
 
@@ -65,11 +67,18 @@ class DatasetBuilder:
             return session_df
 
         # --- Scraping and Parsing ---
-        html_content = self.session_scraper.fetch_session_html(session_url)
-        if not html_content:
-            return session_df # Return original if scraping fails
-
         try:
+            # Load rules for the specific year before scraping
+            rules = load_scraping_rules(self.rules_path, year=speaker_row['date'].year)
+            success_selector = rules.get('content_container')
+            if not success_selector:
+                logger.error(f"'content_container' selector not found in rules for year {speaker_row['date'].year}. Skipping session.")
+                return session_df
+
+            html_content = self.session_scraper.fetch_session_html(session_url, success_selector)
+            if not html_content:
+                return session_df # Return original if scraping fails
+
             parser = HTMLParser(html_content, year=speaker_row['date'].year, rules_path=self.rules_path)
             content_area = parser.extract_content_area()
             if not content_area:
@@ -98,28 +107,37 @@ class DatasetBuilder:
 
     def process_dataset(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Processes the entire dataset by iterating through each session.
-
-        Args:
-            df: The full input DataFrame.
-
-        Returns:
-            A new DataFrame with all applicable sessions reconstructed.
+        Groups the DataFrame by session and applies the segmentation process.
+        Ensures that the Playwright client is properly closed after processing.
         """
-        logger.info("Starting dataset reconstruction process...")
-        reconstructed_sessions = []
-        # Group by date to process each session individually
-        session_groups = df.groupby('date')
+        if 'date' not in df.columns:
+            logger.error("Input DataFrame must contain a 'date' column.")
+            return pd.DataFrame()
 
-        for date, session_df in tqdm(session_groups, desc="Processing Sessions"):
-            processed_session_df = self._process_session(session_df.copy())
-            reconstructed_sessions.append(processed_session_df)
+        all_reconstructed_rows = []
+        try:
+            # Group by date to process each session individually
+            grouped = df.groupby('date')
+            
+            # Use tqdm for a progress bar
+            for date, session_df in tqdm(grouped, desc="Processing Sessions"):
+                processed_session_df = self._process_session(session_df.copy())
+                if processed_session_df is not None:
+                    all_reconstructed_rows.append(processed_session_df)
+        
+        finally:
+            # Ensure the browser is closed even if an error occurs
+            logger.info("Closing Playwright client...")
+            self.playwright_client.close()
 
-        if not reconstructed_sessions:
-            logger.error("No sessions were processed. Returning original dataset.")
-            return df
+        if not all_reconstructed_rows:
+            logger.warning("No sessions were processed or reconstructed.")
+            return pd.DataFrame()
 
-        # Combine all processed sessions into a single DataFrame
-        final_df = pd.concat(reconstructed_sessions, ignore_index=True)
-        logger.info("Dataset reconstruction complete.")
+        # Concatenate all processed sessions into a single DataFrame
+        final_df = pd.concat(all_reconstructed_rows, ignore_index=True)
+        
+        # Here you would re-calculate the 'place_agenda' column
+        # final_df = OrderCalculator.recalculate_order(final_df)
+        
         return final_df

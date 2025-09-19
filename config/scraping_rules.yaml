@@ -8,7 +8,7 @@
   selectors:
     # Selector for the main content area containing the transcript.
     # Based on the documentation, this is a table cell.
-    content_container: 'td[width="100%"][valign="top"]'
+    content_container: 'body > blockquote:nth-of-type(2)'
     
     # Selector for the hyperlinks that point to individual speeches and act as delimiters.
     speech_link: 'a[href*="OpenDocument"]'

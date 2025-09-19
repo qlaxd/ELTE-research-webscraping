@@ -1,89 +1,131 @@
 import logging
 from typing import Optional
-from playwright.sync_api import sync_playwright, Page, Browser, Playwright, Error
+from playwright.sync_api import sync_playwright, Page, BrowserContext, Playwright, Error
+from pathlib import Path
+import re
 
 logger = logging.getLogger(__name__)
 
 class PlaywrightClient:
-    """A web client using Playwright to handle dynamic pages and CAPTCHAs."""
+    """
+    A persistent web client using Playwright with a persistent browser context
+    to maintain sessions and cookies across runs.
+    """
 
     def __init__(self, headless: bool = False, timeout: int = 60000):
         """
         Initializes the PlaywrightClient.
 
         Args:
-            headless: Whether to run the browser in headless mode. Defaults to False.
+            headless: Whether to run the browser in headless mode.
             timeout: The default navigation timeout in milliseconds.
         """
         self.playwright: Optional[Playwright] = None
-        self.browser: Optional[Browser] = None
+        self.context: Optional[BrowserContext] = None
+        self.page: Optional[Page] = None
         self.headless = headless
         self.timeout = timeout
-        self._initialize_browser()
+        
+        self.user_data_dir = Path('data/browser_context')
+        self.user_data_dir.mkdir(exist_ok=True)
+        
+        self.debug_dir = Path('data/debug')
+        self.debug_dir.mkdir(exist_ok=True)
 
-    def _initialize_browser(self):
-        """Initializes the Playwright instance and launches a persistent browser."""
+    def start(self):
+        """Initializes Playwright and launches a persistent browser context."""
+        if self.context:
+            logger.warning("A browser context is already running.")
+            return
         try:
-            logger.info("Initializing Playwright and launching browser...")
+            logger.info(f"Initializing Playwright and launching persistent context from: {self.user_data_dir}")
             self.playwright = sync_playwright().start()
-            # Using chromium, which is generally well-supported
-            self.browser = self.playwright.chromium.launch(headless=self.headless)
-            logger.info("Browser launched successfully.")
+            self.context = self.playwright.chromium.launch_persistent_context(
+                self.user_data_dir,
+                headless=self.headless,
+                args=[
+                    '--disable-blink-features=AutomationControlled',
+                    '--start-maximized',
+                ],
+                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            )
+            self.page = self.context.pages[0] if self.context.pages else self.context.new_page()
+            self.page.set_default_timeout(self.timeout)
+            logger.info("Persistent browser context launched successfully.")
         except Exception as e:
-            logger.error(f"Failed to initialize Playwright browser: {e}")
-            if self.playwright:
-                self.playwright.stop()
+            logger.error(f"Failed to initialize Playwright persistent context: {e}")
+            self.close()
+            raise
 
-    def fetch(self, url: str) -> Optional[str]:
+    def fetch(self, url: str, success_selector: str) -> Optional[str]:
         """
-        Fetches the content of a given URL, allowing for manual CAPTCHA solving.
-
-        Args:
-            url: The URL to fetch.
-
-        Returns:
-            The page source HTML, or None if fetching fails.
+        Fetches content from a URL, handling CAPTCHAs and different page load states intelligently.
         """
-        if not self.browser:
-            logger.error("Browser not initialized. Cannot fetch URL.")
+        if not self.page:
+            logger.error("Browser page not started. Call start() before fetching.")
             return None
 
-        page = self.browser.new_page()
         try:
             logger.info(f"Navigating to URL: {url}")
-            page.goto(url, wait_until='domcontentloaded', timeout=self.timeout)
+            self.page.goto(url, wait_until='domcontentloaded')
 
-            # Simple check for bot detection/CAPTCHA page
-            page_content = page.content()
-            if "TSPD" in page_content or "captcha" in page_content.lower():
-                logger.warning("CAPTCHA or bot detection page detected.")
-                print("\n" + "="*50)
-                print("ACTION REQUIRED: A CAPTCHA has been detected.")
-                print(f"Please solve the CAPTCHA in the browser window for URL: {url}")
-                print("Press Enter in this console when you are done...")
-                print("="*50)
-                
-                # Wait for user to press Enter
-                input()
+            # First, check for an explicit CAPTCHA page
+            page_content_for_captcha_check = self.page.content()
+            captcha_signature = "This question is for testing whether you are a human visitor"
+            if captcha_signature in page_content_for_captcha_check:
+                logger.warning("Definitive CAPTCHA page detected. Pausing for user intervention.")
+                self._handle_captcha_or_error(url, "Real CAPTCHA detected.")
+                # After intervention, we return the new page content
+                return self.page.content()
 
-                # After user intervention, get the new page content
-                logger.info("Resuming script. Fetching page content after CAPTCHA.")
-                page_content = page.content()
-
-            logger.info(f"Successfully fetched content for {url}.")
-            return page_content
+            # If no immediate CAPTCHA, wait for the success selector with a longer timeout
+            try:
+                self.page.wait_for_selector(success_selector, timeout=20000) # Increased timeout
+                logger.info("Success selector found. Page loaded correctly.")
+                return self.page.content()
+            except Error:
+                logger.warning(f"Success selector '{success_selector}' not found, but no CAPTCHA was detected. "
+                             f"The page might have an unsupported layout or was too slow to load. Skipping.")
+                self._save_debug_page(url, "no_selector_found")
+                return None # Do not pause, just skip the URL
 
         except Error as e:
-            logger.error(f"An error occurred during Playwright navigation for {url}: {e}")
+            logger.error(f"A critical error occurred during Playwright navigation for {url}: {e}")
+            self._save_debug_page(url, "critical_error")
             return None
-        finally:
-            page.close()
+
+    def _save_debug_page(self, url: str, suffix: str):
+        """Saves the current page content for debugging."""
+        try:
+            debug_content = self.page.content()
+            sanitized_url = re.sub(r'[^a-zA-Z0-9_-]', '_', url)
+            debug_filepath = self.debug_dir / f"{suffix}_{sanitized_url[:100]}.html"
+            with open(debug_filepath, 'w', encoding='utf-8') as f:
+                f.write(debug_content)
+            logger.info(f"The current page HTML has been saved to: {debug_filepath}")
+        except Exception as e:
+            logger.error(f"Failed to save debug page: {e}")
+
+    def _handle_captcha_or_error(self, url: str, reason: str):
+        """Saves debug info and pauses the script for manual user intervention."""
+        self._save_debug_page(url, "captcha_or_error")
+        
+        print("\n" + "="*60)
+        print(f"ACTION REQUIRED: {reason}")
+        print(f"Please solve the CAPTCHA or resolve the issue in the browser window for URL: {url}")
+        print("The script will wait indefinitely. Press Enter in this console when you are done...")
+        print("="*60)
+        
+        input()
+        logger.info("Resuming script after manual intervention.")
 
     def close(self):
-        """Closes the browser and stops the Playwright instance."""
-        if self.browser:
-            logger.info("Closing the browser.")
-            self.browser.close()
+        """Closes the browser context and stops the Playwright instance."""
+        if self.context:
+            logger.info("Closing the browser context.")
+            self.context.close()
+            self.context = None
         if self.playwright:
             self.playwright.stop()
+            self.playwright = None
         logger.info("Playwright client shut down.")
