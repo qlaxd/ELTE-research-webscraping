@@ -57,9 +57,10 @@ class PlaywrightClient:
             self.close()
             raise
 
-    def fetch(self, url: str, success_selector: str) -> Optional[str]:
+    def fetch(self, url: str) -> Optional[str]:
         """
         Fetches content from a URL, handling CAPTCHAs and different page load states intelligently.
+        It checks for multiple possible content selectors before deciding if a page has loaded successfully.
         """
         if not self.page:
             logger.error("Browser page not started. Call start() before fetching.")
@@ -75,19 +76,33 @@ class PlaywrightClient:
             if captcha_signature in page_content_for_captcha_check:
                 logger.warning("Definitive CAPTCHA page detected. Pausing for user intervention.")
                 self._handle_captcha_or_error(url, "Real CAPTCHA detected.")
-                # After intervention, we return the new page content
                 return self.page.content()
 
-            # If no immediate CAPTCHA, wait for the success selector with a longer timeout
-            try:
-                self.page.wait_for_selector(success_selector, timeout=20000) # Increased timeout
-                logger.info("Success selector found. Page loaded correctly.")
+            # If no immediate CAPTCHA, wait for one of the potential success selectors
+            potential_selectors = [
+                'body > blockquote:nth-of-type(2)',
+                'body > div > blockquote',
+                'body > blockquote'
+            ]
+            
+            success = False
+            for selector in potential_selectors:
+                try:
+                    self.page.wait_for_selector(selector, timeout=10000) # 10s timeout for each selector
+                    logger.info(f"Success selector '{selector}' found. Page loaded correctly.")
+                    success = True
+                    break # Found a valid selector, no need to check others
+                except Error:
+                    logger.debug(f"Selector '{selector}' not found, trying next one.")
+                    continue
+
+            if success:
                 return self.page.content()
-            except Error:
-                logger.warning(f"Success selector '{success_selector}' not found, but no CAPTCHA was detected. "
+            else:
+                logger.warning(f"None of the potential success selectors {potential_selectors} were found, and no CAPTCHA was detected. "
                              f"The page might have an unsupported layout or was too slow to load. Skipping.")
                 self._save_debug_page(url, "no_selector_found")
-                return None # Do not pause, just skip the URL
+                return None
 
         except Error as e:
             logger.error(f"A critical error occurred during Playwright navigation for {url}: {e}")

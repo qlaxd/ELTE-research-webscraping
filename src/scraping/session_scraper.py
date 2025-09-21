@@ -20,10 +20,9 @@ class SessionScraper:
         self.web_client = playwright_client
         self.cache_manager = cache_manager
 
-    def fetch_session_html(self, session_url: str, success_selector: str) -> Optional[str]:
+    def fetch_session_html(self, session_url: str) -> Optional[str]:
         """
         Fetches the HTML content for a given session URL, utilizing a cache.
-        The success_selector is used to verify if the page loaded correctly.
         """
         if not session_url:
             logger.warning("Session URL is empty, cannot fetch.")
@@ -37,7 +36,7 @@ class SessionScraper:
         # 2. If not in cache, fetch from the web
         logger.info(f"Content for {session_url} not in cache, fetching from web.")
         
-        fetched_html = self.web_client.fetch(session_url, success_selector=success_selector)
+        fetched_html = self.web_client.fetch(session_url)
 
         # 3. If fetching was successful, save the content to the cache
         if fetched_html:

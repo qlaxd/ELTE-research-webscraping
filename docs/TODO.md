@@ -1,34 +1,25 @@
-# Project Completion TODO List
+# TODO - A házelnöki beszédek szegmentálásának javítása
 
-This document outlines the remaining tasks to complete the Polish Parliament Speech Segmentation project, as described in the project documentation.
+Ez a lista tartalmazza a hátralévő feladatokat a projekt helyes működésének eléréséhez a `docs/Webscraping_polish_parlspeech_segmentation_task.md` leírás alapján.
 
-## 1. Critical Task: Fix the Scraping Block
+### Prioritási sorrend:
 
--   **Task:** Refactor the web scraping logic to handle the anti-bot protection on the `sejm.gov.pl` website.
--   **Details:** The current `requests`-based implementation is being blocked. This needs to be replaced with a headless browser solution like Selenium.
--   **Reference:** See `docs/refactor.md` for a detailed implementation plan.
+1.  **Dátumtartományra szűrés (1991-2011)**
+    -   **Feladat:** Módosítani a `src/main.py` fájlt, hogy a bemeneti CSV-t a feldolgozás legelején szűrje a `1991-01-01` és `2011-12-31` közötti dátumtartományra.
+    -   **Indoklás:** Megszünteti a hibákat és a program lassulását, amit a nem támogatott (2011 utáni) oldal-struktúrák feldolgozási kísérlete okoz. Csak a releváns adatokkal fog dolgozni a program.
 
-## 2. Major Task: Update Scraping Rules
+2.  **Helyes sor-beillesztési logika implementálása**
+    -   **Feladat:** Megvalósítani a logikát a `src/reconstruction/row_inserter.py`-ban, ami a feldarabolt házelnöki szegmenseket a megfelelő helyre illeszti be a többi felszólaló közé.
+    -   **Indoklás:** Ez a projekt központi eleme, ami jelenleg teljesen hiányzik. A sorrendet a forrás HTML-ben található hiperhivatkozások sorrendje határozza meg.
 
--   **Task:** Add scraping rules for the years 2012 and onwards.
--   **Details:** The `config/scraping_rules.yaml` file needs to be updated with the correct CSS selectors for the more recent session pages. This can only be done after the scraping block is resolved.
--   **Reference:** See `docs/refactor.md` for guidance on how to add new rules.
+3.  **`RowInserter` integrálása és `place_agenda` újraszámítása**
+    -   **Feladat:** A `src/reconstruction/dataset_builder.py`-ban a jelenlegi `pd.concat` helyett a `RowInserter`-t kell használni. A beillesztés után meg kell hívni a `src/segmentation/order_calculator.py`-t a `place_agenda` oszlop újraszámításához.
+    -   **Indoklás:** Biztosítja, hogy a kimeneti adatszerkezet megfeleljen a feladatleírásnak (helyes sorrend és sorszámozás).
 
-## 3. Minor Task: Implement `place_agenda` Re-calculation
+4.  **`agenda_item` metaadat hozzárendelése**
+    -   **Feladat:** Implementálni a logikát, ami a házelnök új szegmenseihez a sorrendben utána következő felszólalás `agenda_item` értékét rendeli hozzá.
+    -   **Indoklás:** A feladatleírás ezt is előírja a helyes metaadatokhoz.
 
--   **Task:** Implement the logic to re-calculate the `place_agenda` column after segmenting and inserting the speaker's speeches.
--   **Details:** The `OrderCalculator` class needs to be implemented and integrated into the `DatasetBuilder`.
--   **Reference:** See `docs/refactor.md` for a code example.
-
-## 4. Additional Tasks from Documentation
-
-The following tasks are also described in the project documentation (`docs/implementation.md` and `docs/plan_md.md`) and should be completed to finish the project:
-
--   **[ ] Implement `RowInserter`:** The `src/reconstruction/row_inserter.py` module is mentioned in the documentation but is not yet implemented. This module is responsible for inserting the new segmented rows into the DataFrame.
--   **[ ] Implement `SegmentValidator`:** The `src/segmentation/segment_validator.py` module is mentioned in the documentation but is not yet implemented. This module should validate the integrity of the segmented speeches.
--   **[ ] Implement `ReconstructionValidator`:** The `src/reconstruction/reconstruction_validator.py` module is mentioned in the documentation but is not yet implemented. This module should validate the reconstructed dataset.
--   **[ ] Complete the CLI:** The `scripts/run_segmentation.py` script should be enhanced with the features described in the documentation, such as a `--dry-run` mode and the ability to process specific date ranges.
--   **[ ] Implement Resume Capability:** The script should be able to save its state and resume from the last successfully processed session.
--   **[ ] Implement Testing:** The project is missing a comprehensive test suite. Unit and integration tests should be written as described in the documentation.
--   **[ ] Implement Quality Assurance and Validation Scripts:** The `scripts/validate_output.py` and other QA scripts mentioned in the documentation should be implemented.
--   **[ ] Complete the Documentation:** The `docs/API.md`, `docs/DATA_SCHEMA.md`, and `docs/TROUBLESHOOTING.md` files should be created and filled with content.
+5.  **Validáció és ellenőrzés**
+    -   **Feladat:** A `src/reconstruction/reconstruction_validator.py`-ban lévő validációs logika beépítése a folyamat végére, hogy automatikusan ellenőrizze a feldolgozás helyességét (sorszámok, beszédek megőrzése stb.).
+    -   **Indoklás:** Biztosítja a kimenet minőségét és a hibák korai felismerését.

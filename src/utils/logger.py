@@ -37,7 +37,7 @@ def setup_logging(log_dir: Path, log_level: str = "INFO"):
         format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}",
         rotation="10 MB",
         retention="7 days",
-        enqueue=True,  # Make logging asynchronous
+        enqueue=False, # Make logging synchronous for easier debugging
         backtrace=True,
         diagnose=True
     )

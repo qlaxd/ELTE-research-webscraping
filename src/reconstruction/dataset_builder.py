@@ -68,14 +68,7 @@ class DatasetBuilder:
 
         # --- Scraping and Parsing ---
         try:
-            # Load rules for the specific year before scraping
-            rules = load_scraping_rules(self.rules_path, year=speaker_row['date'].year)
-            success_selector = rules.get('content_container')
-            if not success_selector:
-                logger.error(f"'content_container' selector not found in rules for year {speaker_row['date'].year}. Skipping session.")
-                return session_df
-
-            html_content = self.session_scraper.fetch_session_html(session_url, success_selector)
+            html_content = self.session_scraper.fetch_session_html(session_url)
             if not html_content:
                 return session_df # Return original if scraping fails
 
