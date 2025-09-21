@@ -42,7 +42,7 @@ def setup_logging(log_dir: Path, log_level: str = "INFO"):
         diagnose=True
     )
 
-    logging.info(f"Logger configured. Log level: {log_level}. Log file: {log_file_path}")
+    logger.info(f"Logger configured. Log level: {log_level}. Log file: {log_file_path}")
 
 # Example of a more advanced logging helper (can be expanded later)
 def log_error_with_context(error: Exception, **kwargs):

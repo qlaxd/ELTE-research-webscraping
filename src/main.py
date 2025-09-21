@@ -40,6 +40,17 @@ def run_pipeline():
         logger.exception(f"Failed to read or parse the input CSV file. Pipeline aborted. Error: {e}")
         return
 
+    # --- 2a. Filter DataFrame to the required date range (1991-2011) ---
+    logger.info(f"Original dataset has {len(input_df)} rows.")
+    start_date = '1991-01-01'
+    end_date = '2011-12-31'
+    input_df = input_df[(input_df['date'] >= start_date) & (input_df['date'] <= end_date)]
+    logger.info(f"Filtered dataset to the range {start_date} - {end_date}. New row count: {len(input_df)}.")
+
+    if input_df.empty:
+        logger.error("The dataframe is empty after filtering for the 1991-2011 date range. Aborting.")
+        return
+
     # --- 3. Process and Reconstruct Dataset ---
     try:
         dataset_builder = DatasetBuilder(config)
