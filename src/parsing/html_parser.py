@@ -40,6 +40,7 @@ class HTMLParser:
         """
         # A list of selectors to try in order. More specific ones come first.
         potential_selectors = [
+            'div.stenogram',        # For layouts with a specific div class
             'body > blockquote:nth-of-type(2)', # For modern layouts with two blockquotes in body
             'body > div > blockquote',          # For older layouts where content is in a div
             'body > blockquote'               # General fallback for pages with only one blockquote
@@ -56,5 +57,5 @@ class HTMLParser:
                 logger.info(f"Successfully extracted main content area using selector: '{selector}'")
                 return content_area
         
-        logger.warning(f"Could not find the content area using any of the potential selectors: {potential_selectors}")
+        logger.warning(f"Could not find the content area using any of the potential selectors: {potential_selectors}") 
         return None

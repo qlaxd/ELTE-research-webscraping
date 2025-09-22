@@ -38,7 +38,7 @@ class MetadataManager:
             new_row['text'] = segment_text
             # place_agenda will be recalculated later for the whole session
             new_row['place_agenda'] = -1 # Placeholder value
-            # agenda_item will be assigned in the next step
+            # agenda_item will be assigned after reordering
             new_row['agenda_item'] = None # Placeholder value
             new_rows.append(new_row)
         
@@ -46,38 +46,30 @@ class MetadataManager:
         return new_rows
 
     @staticmethod
-    def assign_agenda_items(new_rows: List[Dict[str, Any]], session_df: pd.DataFrame) -> List[Dict[str, Any]]:
+    def assign_agenda_items(df: pd.DataFrame) -> pd.DataFrame:
         """
-        Assigns the correct 'agenda_item' to each new speaker segment.
+        Assigns the correct 'agenda_item' to each speaker segment ('chair' == 1).
 
-        According to the task, the speaker's segment should take the agenda_item
-        of the speech that follows it.
+        A speaker's segment receives the 'agenda_item' of the speech that immediately
+        follows it in the reconstructed order. This is done by back-filling the data.
 
         Args:
-            new_rows: The list of newly created speaker rows (as dictionaries).
-            session_df: The original DataFrame of the session, used to find the next speech.
+            df: The session DataFrame, already sorted in the correct chronological order.
 
         Returns:
-            The list of new rows with the 'agenda_item' field correctly populated.
+            The DataFrame with the 'agenda_item' column correctly populated for speaker segments.
         """
-        logger.info("Assigning agenda items to new segments...")
-        original_indices = session_df.index
-
-        for i, new_row in enumerate(new_rows):
-            # Find the position where the new row would be inserted.
-            # This logic assumes the new rows are to be inserted at the position of the original speaker row.
-            # A more sophisticated approach in the reconstruction phase will handle the exact ordering.
-            # For now, we find the next speech in the original dataframe.
-            original_row_index = new_rows[i-1]['original_index'] if i > 0 else new_rows[0]['original_index'] # This needs to be improved
-            # This is a placeholder logic. The actual insertion and agenda assignment will be more complex.
-            # A simpler approach for now: all segments get the agenda item of the first non-chair speech.
-            
-            first_non_chair_speech = session_df[session_df['chair'] == 0].iloc[0]
-            if first_non_chair_speech is not None:
-                new_row['agenda_item'] = first_non_chair_speech['agenda_item']
-
-        # This is a simplified placeholder. The final logic will be in the reconstruction phase,
-        # where the exact position of each segment is known.
-        logger.warning("'assign_agenda_items' is using placeholder logic. Final implementation will be in the reconstruction phase.")
+        logger.info("Assigning agenda items to speaker segments...")
         
-        return new_rows
+        # Create a boolean mask for the speaker rows
+        is_speaker_row = df['chair'] == 1
+        
+        # Temporarily set agenda_item to NaN for speaker rows to allow backfilling
+        # This ensures that only speaker rows get modified
+        df.loc[is_speaker_row, 'agenda_item'] = None
+        
+        # Backfill the NaN values from the next valid observation in the column
+        df['agenda_item'] = df['agenda_item'].bfill()
+        
+        logger.info("Finished assigning agenda items.")
+        return df

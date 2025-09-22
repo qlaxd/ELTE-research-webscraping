@@ -10,9 +10,11 @@ from src.scraping.session_scraper import SessionScraper
 from src.scraping.rules_loader import load_scraping_rules
 from src.parsing.html_parser import HTMLParser
 from src.parsing.speech_extractor import SpeechExtractor
+from src.parsing.link_analyzer import LinkAnalyzer
 from src.segmentation.metadata_manager import MetadataManager
-# from .row_inserter import RowInserter # To be implemented in the next step
-# from src.segmentation.order_calculator import OrderCalculator # To be used later
+from src.reconstruction.row_inserter import RowInserter
+from src.segmentation.order_calculator import OrderCalculator
+from src.reconstruction.reconstruction_validator import ReconstructionValidator
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +33,7 @@ class DatasetBuilder:
 
         # Initialize the components needed for the pipeline
         self.playwright_client = PlaywrightClient(
-            headless=self.config['scraping'].get('headless', False)
+            headless=self.config['scraping'].get('headless', True) # Default to headless
         )
         self.playwright_client.start() # Start the browser
         cache_manager = CacheManager(cache_dir=Path(config['paths']['cache_dir']))
@@ -50,27 +52,27 @@ class DatasetBuilder:
         # Find the main speaker row
         speaker_rows = session_df[session_df['chair'] == 1]
         if len(speaker_rows) == 0:
-            logger.warning(f"Session on date {session_df['date'].iloc[0]} has no speaker rows. Skipping.")
+            logger.warning(f"Session on date {session_df['date'].iloc[0].date()} has no speaker rows. Skipping.")
             return session_df # Return original if no speaker row is found
 
         if len(speaker_rows) > 1:
-            logger.info(f"Session on date {session_df['date'].iloc[0]} has {len(speaker_rows)} speaker rows. Processing only the first one.")
+            logger.info(f"Session on date {session_df['date'].iloc[0].date()} has {len(speaker_rows)} speaker rows. Processing only the first one.")
         
         speaker_row = speaker_rows.iloc[0]
         
-        # All other rows, including other speaker rows
-        other_rows = session_df[session_df.index != speaker_row.name]
+        # All other rows (non-chair)
+        other_rows = session_df[session_df['chair'] == 0].copy()
 
-        session_url = speaker_row.get('source') # Assumes a 'source' column exists
+        session_url = speaker_row.get('source')
         if not session_url or not isinstance(session_url, str):
-            logger.warning(f"No valid URL found for session on {speaker_row['date']}. Skipping.")
+            logger.warning(f"No valid URL found for session on {speaker_row['date'].date()}. Skipping.")
             return session_df
 
         # --- Scraping and Parsing ---
         try:
             html_content = self.session_scraper.fetch_session_html(session_url)
             if not html_content:
-                return session_df # Return original if scraping fails
+                return session_df
 
             parser = HTMLParser(html_content, year=speaker_row['date'].year, rules_path=self.rules_path)
             content_area = parser.extract_content_area()
@@ -79,24 +81,35 @@ class DatasetBuilder:
 
             extractor = SpeechExtractor(content_area, parser.rules)
             segments = extractor.extract_segments()
+            links = extractor.extract_hyperlinks()
+
             if not segments:
-                logger.warning(f"No segments extracted for session on {speaker_row['date']}. Returning original.")
+                logger.warning(f"No segments extracted for session on {speaker_row['date'].date()}. Returning original.")
                 return session_df
         except Exception as e:
-            logger.error(f"An error occurred during parsing/extraction for session {speaker_row['date']}: {e}")
+            logger.error(f"An error occurred during parsing/extraction for session {speaker_row['date'].date()}: {e}")
             return session_df
 
         # --- Segmentation and Reconstruction ---
         metadata_manager = MetadataManager(speaker_row, segments)
         new_speaker_rows = metadata_manager.create_new_rows()
 
-        # In the next steps, we will insert these rows and re-order.
-        # For now, this method demonstrates the pipeline up to segment creation.
-        logger.info("Placeholder for row insertion and re-ordering.")
-        
-        reconstructed_rows = pd.concat([other_rows, pd.DataFrame(new_speaker_rows)], ignore_index=True)
-        
-        return reconstructed_rows
+        reconstructed_df = RowInserter.insert_rows(other_rows, new_speaker_rows, links)
+        ordered_df = OrderCalculator.recalculate_place_agenda(reconstructed_df)
+        final_session_df = MetadataManager.assign_agenda_items(ordered_df)
+
+        # --- Final Validation ---
+        is_valid = ReconstructionValidator.validate_reconstruction(
+            original_session_df=session_df,
+            reconstructed_session_df=final_session_df,
+            num_new_segments=len(new_speaker_rows)
+        )
+
+        if not is_valid:
+            logger.error(f"Reconstruction validation failed for session on {session_df['date'].iloc[0].date()}. Returning original, unprocessed data for this session.")
+            return session_df
+
+        return final_session_df
 
     def process_dataset(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -110,7 +123,7 @@ class DatasetBuilder:
         all_reconstructed_rows = []
         try:
             # Group by date to process each session individually
-            grouped = df.groupby('date')
+            grouped = df.groupby(df['date'].dt.date)
             
             # Use tqdm for a progress bar
             for date, session_df in tqdm(grouped, desc="Processing Sessions"):
@@ -129,8 +142,5 @@ class DatasetBuilder:
 
         # Concatenate all processed sessions into a single DataFrame
         final_df = pd.concat(all_reconstructed_rows, ignore_index=True)
-        
-        # Here you would re-calculate the 'place_agenda' column
-        # final_df = OrderCalculator.recalculate_order(final_df)
         
         return final_df

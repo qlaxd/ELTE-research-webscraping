@@ -80,6 +80,7 @@ class PlaywrightClient:
 
             # If no immediate CAPTCHA, wait for one of the potential success selectors
             potential_selectors = [
+                'div.stenogram', # Added for modern layouts (Sejm7 onwards)
                 'body > blockquote:nth-of-type(2)',
                 'body > div > blockquote',
                 'body > blockquote'
