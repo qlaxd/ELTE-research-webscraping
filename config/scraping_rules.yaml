@@ -11,7 +11,7 @@
     content_container: 'body > blockquote:nth-of-type(2)'
     
     # Selector for the hyperlinks that point to individual speeches and act as delimiters.
-    speech_link: 'a[href*="/main/"]'
+    speech_link: 'a[href*="/main/"], a[href*="wypowiedz.xsp"]'
     
     # A pattern to identify the start of the main speaker's (Marszałek) concatenated speech block.
     # This is not a selector but a text pattern to look for.

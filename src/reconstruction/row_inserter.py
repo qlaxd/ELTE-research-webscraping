@@ -4,59 +4,30 @@ from typing import List, Dict, Any, Optional
 import re
 
 
-def normalize_text(text: str) -> str:
-    """Normalizes text for comparison by lowercasing, removing non-alphanumeric characters, and extra whitespace."""
-    if not isinstance(text, str):
-        return ""
-    # Aggressively remove anything that is not a word character or space
-    text = re.sub(r'[\W_]', ' ', text)
-    return re.sub(r'\s+', ' ', text).strip().lower()
-
 def find_matching_speech_index(analyzed_link: Dict[str, str], speeches_df: pd.DataFrame) -> Optional[int]:
     """
-    Finds the index of the best matching speech in the DataFrame by comparing the full link text
-    against the combined speaker and speaker_type info from the DataFrame.
+    Finds the index of the matching speech in the DataFrame by searching for the link's
+    href value within the 'source' column of the DataFrame.
     """
-    # Use the full original link text for a more reliable match
-    link_text_original = analyzed_link.get('text', '')
-    link_text_full = normalize_text(link_text_original)
-    if not link_text_full:
-        logger.warning(f"Link has no text to match: {analyzed_link}")
+    link_href = analyzed_link.get('href')
+    if not link_href:
+        logger.warning(f"Link has no href to match: {analyzed_link}")
         return None
 
-    logger.debug(f"--- Searching for match for link: '{link_text_original}' (normalized: '{link_text_full}') ---")
-    link_words = set(link_text_full.split())
+    # The href is usually a relative path, e.g., /Debata6.nsf/main/13E17D4D
+    # We need to find the row where the 'source' column (a full URL) contains this path.
+    logger.debug(f"Searching for match for href: '{link_href}'")
 
-    best_match_score = 0
-    best_match_index = None
+    # Use vectorized string operations for efficiency
+    matching_rows = speeches_df[speeches_df['source'].str.contains(link_href, case=False, na=False)]
 
-    for index, speech in speeches_df.iterrows():
-        # Combine speaker_type and speaker name from the dataframe for a comprehensive source text
-        speech_speaker_info_original = f"{speech.get('speaker_type', '')} {speech.get('speaker', '')}"
-        speech_info_normalized = normalize_text(speech_speaker_info_original)
-        
-        if speech_info_normalized:
-            speech_words = set(speech_info_normalized.split())
-            
-            # Calculate Jaccard similarity as a matching score
-            intersection_score = len(link_words.intersection(speech_words))
-            union_size = len(link_words.union(speech_words))
-            jaccard_score = intersection_score / union_size if union_size > 0 else 0
-            
-            logger.debug(f"Comparing with row index {index}: '{speech_info_normalized}'. Jaccard score: {jaccard_score:.2f}")
+    if not matching_rows.empty:
+        # If multiple rows match (e.g., duplicates in source data), take the first one
+        match_index = matching_rows.index[0]
+        logger.info(f"Found match for href '{link_href}' at index {match_index}.")
+        return match_index
 
-            if jaccard_score > best_match_score:
-                best_match_score = jaccard_score
-                best_match_index = index
-
-    # Set a threshold for matching
-    MATCH_THRESHOLD = 0.5 
-    if best_match_index is not None and best_match_score >= MATCH_THRESHOLD:
-        matched_speech_info = normalize_text(f"{speeches_df.loc[best_match_index].get('speaker_type', '')} {speeches_df.loc[best_match_index].get('speaker', '')}")
-        logger.info(f"Found best match for link '{link_text_full}' at index {best_match_index} ('{matched_speech_info}') with score {best_match_score:.2f}.")
-        return best_match_index
-
-    logger.warning(f"Could not find any suitable match for link text '{link_text_full}' (best score: {best_match_score:.2f}, threshold: {MATCH_THRESHOLD}).")
+    logger.warning(f"Could not find any speech matching the href: '{link_href}'.")
     return None
 
 class RowInserter:

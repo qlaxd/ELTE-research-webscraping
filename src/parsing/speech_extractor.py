@@ -40,7 +40,7 @@ class SpeechExtractor:
         # Iterate through all descendants of the content area
         for element in self.content_area.descendants:
             # If the element is a hyperlink to another speech, it's a delimiter
-            if isinstance(element, Tag) and element.name == 'a' and element.select_one(self.speech_link_selector, href=True):
+            if isinstance(element, Tag) and element.name == 'a' and element.has_attr('href') and "/main/" in element['href']:
                 # When a delimiter is found, the accumulated text forms a segment
                 if current_segment_parts:
                     full_segment = ' '.join(current_segment_parts).strip()
