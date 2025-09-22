@@ -7,8 +7,7 @@ from src.utils.logger import setup_logging
 from src.data.csv_handler import CSVHandler
 from src.reconstruction.dataset_builder import DatasetBuilder
 
-# It's good practice to have a dedicated logger for the main script
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 def run_pipeline():
     """Executes the end-to-end segmentation and reconstruction pipeline."""

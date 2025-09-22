@@ -1,7 +1,5 @@
-import logging
 import pandas as pd
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 class OrderCalculator:
     """Handles the recalculation of position-dependent fields like 'place_agenda'."""

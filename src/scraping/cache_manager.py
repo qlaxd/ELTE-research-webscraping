@@ -1,11 +1,9 @@
 import hashlib
+from pathlib import Path
 import pickle
 import time
-import logging
-from pathlib import Path
-from typing import Any, Dict, Optional
-
-logger = logging.getLogger(__name__)
+from typing import Any, Optional
+from loguru import logger
 
 class CacheManager:
     """Manages a file-based cache for storing web content to avoid redundant downloads."""

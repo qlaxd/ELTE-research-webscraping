@@ -1,8 +1,6 @@
 from pathlib import Path
+from loguru import logger
 import yaml
-import logging
-
-logger = logging.getLogger(__name__)
 
 def load_config(config_path: Path) -> dict:
     """Loads the application configuration from a YAML file."""

@@ -1,11 +1,8 @@
-import logging
-from typing import Dict, List, Optional
-
+from typing import Dict, List
 from bs4 import Tag
+from loguru import logger
 
 from src.utils.text_cleaner import TextCleaner
-
-logger = logging.getLogger(__name__)
 
 class SpeechExtractor:
     """Extracts speech segments from a parsed HTML content area."""

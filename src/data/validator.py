@@ -1,10 +1,4 @@
-import logging
-import re
-from typing import Dict, List, Tuple
-
-import pandas as pd
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 class DataValidator:
     """Validates the structure and content of the input DataFrame."""

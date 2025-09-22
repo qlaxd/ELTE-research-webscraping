@@ -1,8 +1,6 @@
 from datetime import datetime
 from typing import Optional
-import logging
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 class DateHandler:
     """A utility class for handling date parsing, formatting, and validation."""

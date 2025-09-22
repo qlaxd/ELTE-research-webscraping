@@ -1,7 +1,5 @@
-import logging
+from loguru import logger
 import pandas as pd
-
-logger = logging.getLogger(__name__)
 
 class ReconstructionValidator:
     """Validates the output of the dataset reconstruction process for a single session."""

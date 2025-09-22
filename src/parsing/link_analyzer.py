@@ -1,8 +1,6 @@
 import re
-import logging
-from typing import Dict, List
-
-logger = logging.getLogger(__name__)
+from typing import List, Dict
+from loguru import logger
 
 class LinkAnalyzer:
     """Analyzes hyperlinks to extract structured data like speaker names and titles."""
@@ -15,7 +13,7 @@ class LinkAnalyzer:
         r"([\w\s\.\-]+?)"               # Non-greedy capture for the title (group 1)
         r"\s+"                             # Separator
         r"([A-ZĄĆĘŁŃÓŚŹŻ][\w\s\-ĄĆĘŁŃÓŚŹŻ]+)" # Capture for the name (group 2), assumes name starts with capital
-        r"\s*$"                            # Optional trailing whitespace
+        r"[\s\.]*$"                            # Optional trailing whitespace or period
     , re.IGNORECASE)
 
     def __init__(self, links: List[Dict[str, str]]):
@@ -38,11 +36,12 @@ class LinkAnalyzer:
         Returns:
             A dictionary containing the speaker's 'name' and 'title'.
         """
+        logger.debug(f"Attempting to parse speaker details from link text: '{link_text}'")
         match = self.SPEAKER_PATTERN.match(link_text)
         if match:
             title = match.group(1).strip()
             name = match.group(2).strip()
-            logger.debug(f"Parsed speaker: Title='{title}', Name='{name}' from '{link_text}'")
+            logger.debug(f"Regex matched. Group 1 (Title): '{title}', Group 2 (Name): '{name}'")
             return {'name': name, 'title': title}
         else:
             # If the regex doesn't match, we can assume the whole text is the name

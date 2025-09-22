@@ -1,13 +1,5 @@
 import time
-import logging
-from typing import Dict, Optional
-
-import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
-import selenium.webdriver as webdriver
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 class WebClient:
     """A robust HTTP client for scraping web pages with session management, retries, and rate limiting."""

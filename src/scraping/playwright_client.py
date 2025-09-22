@@ -1,10 +1,9 @@
-import logging
-from typing import Optional
-from playwright.sync_api import sync_playwright, Page, BrowserContext, Playwright, Error
+from loguru import logger
 from pathlib import Path
 import re
+from typing import Optional
+from playwright.sync_api import Playwright, sync_playwright, BrowserContext, Page, Error
 
-logger = logging.getLogger(__name__)
 
 class PlaywrightClient:
     """

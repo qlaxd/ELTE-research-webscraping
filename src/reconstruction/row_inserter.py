@@ -1,54 +1,62 @@
-import logging
+from loguru import logger
 import pandas as pd
 from typing import List, Dict, Any, Optional
 import re
 
-logger = logging.getLogger(__name__)
 
 def normalize_text(text: str) -> str:
-    """Normalizes text for comparison by lowercasing, removing punctuation, and extra whitespace."""
+    """Normalizes text for comparison by lowercasing, removing non-alphanumeric characters, and extra whitespace."""
     if not isinstance(text, str):
         return ""
-    text = re.sub(r'[^\w\s-]', ' ', text)
+    # Aggressively remove anything that is not a word character or space
+    text = re.sub(r'[\W_]', ' ', text)
     return re.sub(r'\s+', ' ', text).strip().lower()
 
 def find_matching_speech_index(analyzed_link: Dict[str, str], speeches_df: pd.DataFrame) -> Optional[int]:
     """
-    Finds the index of the best matching speech in the DataFrame based on analyzed link data.
-    This implementation uses a more robust word-set matching strategy.
-
-    Args:
-        analyzed_link: A dictionary containing the analyzed link info, including 'speaker_name'.
-        speeches_df: DataFrame of speeches to search through.
-
-    Returns:
-        The index of the first matching speech, or None if no match is found.
+    Finds the index of the best matching speech in the DataFrame by comparing the full link text
+    against the combined speaker and speaker_type info from the DataFrame.
     """
-    link_speaker_name = normalize_text(analyzed_link.get('speaker_name', ''))
-    if not link_speaker_name:
-        logger.warning(f"Link has no speaker name to match: {analyzed_link}")
+    # Use the full original link text for a more reliable match
+    link_text_original = analyzed_link.get('text', '')
+    link_text_full = normalize_text(link_text_original)
+    if not link_text_full:
+        logger.warning(f"Link has no text to match: {analyzed_link}")
         return None
 
-    link_name_words = set(link_speaker_name.split())
+    logger.debug(f"--- Searching for match for link: '{link_text_original}' (normalized: '{link_text_full}') ---")
+    link_words = set(link_text_full.split())
 
-    # --- Strategy 1: Word set comparison for speaker names ---
-    # This is robust against name order differences (e.g., "Jan Kowalski" vs. "Kowalski Jan").
+    best_match_score = 0
+    best_match_index = None
+
     for index, speech in speeches_df.iterrows():
-        speech_speaker_name = normalize_text(speech.get('speaker', ''))
-        if speech_speaker_name:
-            speech_name_words = set(speech_speaker_name.split())
-            if link_name_words == speech_name_words:
-                logger.debug(f"Found word-set speaker match for '{link_speaker_name}' at index {index}.")
-                return index
+        # Combine speaker_type and speaker name from the dataframe for a comprehensive source text
+        speech_speaker_info_original = f"{speech.get('speaker_type', '')} {speech.get('speaker', '')}"
+        speech_info_normalized = normalize_text(speech_speaker_info_original)
+        
+        if speech_info_normalized:
+            speech_words = set(speech_info_normalized.split())
+            
+            # Calculate Jaccard similarity as a matching score
+            intersection_score = len(link_words.intersection(speech_words))
+            union_size = len(link_words.union(speech_words))
+            jaccard_score = intersection_score / union_size if union_size > 0 else 0
+            
+            logger.debug(f"Comparing with row index {index}: '{speech_info_normalized}'. Jaccard score: {jaccard_score:.2f}")
 
-    # --- Strategy 2: Fallback to checking if link speaker name is a subset of the agenda_item ---
-    for index, speech in speeches_df.iterrows():
-        agenda_item_text = normalize_text(speech.get('agenda_item', ''))
-        if agenda_item_text and link_name_words.issubset(set(agenda_item_text.split())):
-            logger.debug(f"Found fallback subset match for '{link_speaker_name}' in agenda_item at index {index}.")
-            return index
+            if jaccard_score > best_match_score:
+                best_match_score = jaccard_score
+                best_match_index = index
 
-    logger.warning(f"Could not find any match for speaker '{link_speaker_name}'. Available speakers: {speeches_df['speaker'].unique().tolist()}")
+    # Set a threshold for matching
+    MATCH_THRESHOLD = 0.5 
+    if best_match_index is not None and best_match_score >= MATCH_THRESHOLD:
+        matched_speech_info = normalize_text(f"{speeches_df.loc[best_match_index].get('speaker_type', '')} {speeches_df.loc[best_match_index].get('speaker', '')}")
+        logger.info(f"Found best match for link '{link_text_full}' at index {best_match_index} ('{matched_speech_info}') with score {best_match_score:.2f}.")
+        return best_match_index
+
+    logger.warning(f"Could not find any suitable match for link text '{link_text_full}' (best score: {best_match_score:.2f}, threshold: {MATCH_THRESHOLD}).")
     return None
 
 class RowInserter:
@@ -72,20 +80,27 @@ class RowInserter:
         reconstructed_rows: List[Dict[str, Any]] = []
         remaining_speeches = session_df.copy()
 
+        # The first segment of the speaker's speech always comes first
         reconstructed_rows.append(new_rows[0])
 
+        # Iterate through the links to place the existing speeches and subsequent speaker segments
         for i, link in enumerate(analyzed_links):
             match_index = find_matching_speech_index(link, remaining_speeches)
             
             if match_index is not None:
+                # Append the matched speech
                 reconstructed_rows.append(remaining_speeches.loc[match_index].to_dict())
+                # Remove the matched speech so it's not considered again
                 remaining_speeches.drop(match_index, inplace=True)
             else:
+                # This is a critical issue if a link doesn't have a corresponding speech
                 logger.warning(f"Could not find a matching speech for link: {link}")
 
+            # Append the next speaker segment that follows this link
             if (i + 1) < len(new_rows):
                 reconstructed_rows.append(new_rows[i + 1])
 
+        # If any non-speaker speeches were not matched, append them to the end to avoid data loss
         if not remaining_speeches.empty:
             logger.warning(
                 f"Found {len(remaining_speeches)} non-speaker speeches that were not matched to any link. "
@@ -97,6 +112,7 @@ class RowInserter:
             logger.error("Reconstruction resulted in an empty list of rows. This should not happen.")
             return pd.DataFrame()
 
+        # Convert the list of dictionaries back to a DataFrame
         final_df = pd.DataFrame(reconstructed_rows)
         logger.info(f"Reconstruction complete. New session has {len(final_df)} rows.")
         

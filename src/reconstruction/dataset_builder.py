@@ -1,22 +1,19 @@
-import logging
-from pathlib import Path
+from loguru import logger
 import pandas as pd
-from tqdm import tqdm
-
-# Import all necessary components from other modules
 from src.scraping.playwright_client import PlaywrightClient
-from src.scraping.cache_manager import CacheManager
 from src.scraping.session_scraper import SessionScraper
-from src.scraping.rules_loader import load_scraping_rules
+from src.scraping.cache_manager import CacheManager
+from src.segmentation.order_calculator import OrderCalculator
 from src.parsing.html_parser import HTMLParser
 from src.parsing.speech_extractor import SpeechExtractor
 from src.parsing.link_analyzer import LinkAnalyzer
-from src.segmentation.metadata_manager import MetadataManager
 from src.reconstruction.row_inserter import RowInserter
-from src.segmentation.order_calculator import OrderCalculator
+from src.segmentation.metadata_manager import MetadataManager
 from src.reconstruction.reconstruction_validator import ReconstructionValidator
+from pathlib import Path
+from typing import Optional
+from tqdm import tqdm
 
-logger = logging.getLogger(__name__)
 
 class DatasetBuilder:
     """Orchestrates the end-to-end process of reconstructing the dataset."""
@@ -29,7 +26,8 @@ class DatasetBuilder:
             config: A dictionary containing application settings from settings.yaml.
         """
         self.config = config
-        self.rules_path = Path('config/scraping_rules.yaml')
+        project_root = Path(__file__).resolve().parent.parent.parent
+        self.rules_path = project_root / 'config/scraping_rules.yaml'
 
         # Initialize the components needed for the pipeline
         self.playwright_client = PlaywrightClient(
@@ -53,6 +51,7 @@ class DatasetBuilder:
         speaker_rows = session_df[session_df['chair'] == 1]
         if len(speaker_rows) == 0:
             logger.warning(f"Session on date {session_df['date'].iloc[0].date()} has no speaker rows. Skipping.")
+            logger.debug(f"Head of skipped session DataFrame:\n{session_df.head().to_string()}")
             return session_df # Return original if no speaker row is found
 
         if len(speaker_rows) > 1:
@@ -83,6 +82,9 @@ class DatasetBuilder:
             segments = extractor.extract_segments()
             links = extractor.extract_hyperlinks()
 
+            link_analyzer = LinkAnalyzer(links)
+            analyzed_links = link_analyzer.analyze_links()
+
             if not segments:
                 logger.warning(f"No segments extracted for session on {speaker_row['date'].date()}. Returning original.")
                 return session_df
@@ -94,7 +96,7 @@ class DatasetBuilder:
         metadata_manager = MetadataManager(speaker_row, segments)
         new_speaker_rows = metadata_manager.create_new_rows()
 
-        reconstructed_df = RowInserter.insert_rows(other_rows, new_speaker_rows, links)
+        reconstructed_df = RowInserter.insert_rows(other_rows, new_speaker_rows, analyzed_links)
         ordered_df = OrderCalculator.recalculate_place_agenda(reconstructed_df)
         final_session_df = MetadataManager.assign_agenda_items(ordered_df)
 

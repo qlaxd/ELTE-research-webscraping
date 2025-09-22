@@ -1,10 +1,8 @@
-import logging
 from typing import Optional
+from loguru import logger
 
-from .playwright_client import PlaywrightClient
-from .cache_manager import CacheManager
-
-logger = logging.getLogger(__name__)
+from src.scraping.cache_manager import CacheManager
+from src.scraping.playwright_client import PlaywrightClient
 
 class SessionScraper:
     """Scrapes and caches parliamentary session pages."""

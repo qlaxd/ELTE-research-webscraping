@@ -1,8 +1,6 @@
-import logging
-from typing import Dict, List, Any
+from typing import Any, Dict, List
+from loguru import logger
 import pandas as pd
-
-logger = logging.getLogger(__name__)
 
 class MetadataManager:
     """Manages the creation and assignment of metadata for new speech segments."""

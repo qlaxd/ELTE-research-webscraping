@@ -1,10 +1,7 @@
-import logging
 from pathlib import Path
-from typing import Dict, List, Any
-
+from typing import Any, Dict, List
+from loguru import logger
 import yaml
-
-logger = logging.getLogger(__name__)
 
 _rules_cache: List[Dict[str, Any]] = []
 

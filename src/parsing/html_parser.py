@@ -1,12 +1,9 @@
-import logging
 from pathlib import Path
-from typing import Dict, Optional
-
+from typing import Optional
 from bs4 import BeautifulSoup, Tag
+from loguru import logger
 
 from src.scraping.rules_loader import load_scraping_rules
-
-logger = logging.getLogger(__name__)
 
 class HTMLParser:
     """Parses HTML content to extract the main transcript area using year-specific rules."""

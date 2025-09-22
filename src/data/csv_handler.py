@@ -1,10 +1,7 @@
-import logging
+from loguru import logger
+from typing import Union, Optional, Iterator, List, Callable
 from pathlib import Path
-from typing import Callable, Iterator, List, Optional, Union
-
 import pandas as pd
-
-logger = logging.getLogger(__name__)
 
 class CSVHandler:
     """Handles reading and writing CSV files with support for chunking and validation."""

@@ -1,10 +1,4 @@
-import logging
-import time
-from typing import Optional
-import undetected_chromedriver as uc
-from selenium.common.exceptions import WebDriverException
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 class SeleniumClient:
     """A web client using undetected-chromedriver to bypass bot detection."""

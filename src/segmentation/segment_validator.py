@@ -1,8 +1,4 @@
-import logging
-from typing import Dict, List, Any
-from collections import Counter
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 class SegmentValidator:
     """Provides validation methods for the segmentation process."""
