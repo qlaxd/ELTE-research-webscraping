@@ -34,6 +34,11 @@ class SpeechExtractor:
             A list of cleaned speech segments.
         """
         logger.info("Starting extraction of speech segments...")
+
+        # Pre-cleaning step: remove all script and style tags from the content area
+        for tag in self.content_area.select('script, style'):
+            tag.decompose()
+
         segments = []
         current_segment_parts = []
 
