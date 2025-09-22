@@ -36,11 +36,14 @@ class SpeechExtractor:
         logger.info("Starting extraction of speech segments...")
         segments = []
         current_segment_parts = []
+
+        # Find all delimiter links first using the robust selector
+        delimiter_links = {link for link in self.content_area.select(self.speech_link_selector)}
         
         # Iterate through all descendants of the content area
         for element in self.content_area.descendants:
-            # If the element is a hyperlink to another speech, it's a delimiter
-            if isinstance(element, Tag) and element.name == 'a' and element.has_attr('href') and "/main/" in element['href']:
+            # If the element is one of the delimiter hyperlinks, it marks the end of a segment.
+            if element in delimiter_links:
                 # When a delimiter is found, the accumulated text forms a segment
                 if current_segment_parts:
                     full_segment = ' '.join(current_segment_parts).strip()

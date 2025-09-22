@@ -29,30 +29,11 @@ class HTMLParser:
 
     def extract_content_area(self) -> Optional[Tag]:
         """
-        Extracts the main content area from the parsed HTML using a list of potential selectors.
-        This method tries several selectors in order to handle different page layouts across years.
+        The input is now expected to be the relevant HTML fragment from the CSV.
+        Therefore, the whole parsed soup is considered the content area.
 
         Returns:
-            A BeautifulSoup Tag object representing the content area, or None if not found.
+            The BeautifulSoup Tag object representing the content area.
         """
-        # A list of selectors to try in order. More specific ones come first.
-        potential_selectors = [
-            'div.stenogram',        # For layouts with a specific div class
-            'body > blockquote:nth-of-type(2)', # For modern layouts with two blockquotes in body
-            'body > div > blockquote',          # For older layouts where content is in a div
-            'body > blockquote'               # General fallback for pages with only one blockquote
-        ]
-
-        for selector in potential_selectors:
-            logger.debug(f"Attempting to extract content area with selector: '{selector}'")
-            content_area = self.soup.select_one(selector)
-            if content_area:
-                # Basic sanity check to ensure the selected blockquote is not just navigation
-                if content_area.find('a', href=lambda href: href and 'Navigate&To=Prev' in href):
-                    logger.debug(f"Selector '{selector}' found a navigation blockquote, skipping.")
-                    continue
-                logger.info(f"Successfully extracted main content area using selector: '{selector}'")
-                return content_area
-        
-        logger.warning(f"Could not find the content area using any of the potential selectors: {potential_selectors}") 
-        return None
+        logger.debug("Using the entire provided HTML string as the content area.")
+        return self.soup
