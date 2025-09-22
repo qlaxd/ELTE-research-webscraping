@@ -4,12 +4,14 @@
 __pycache__/
 *.pyc
 dev/
-output/
+# output/
 logs/
-*.log
+# *.log
 .DS_Store
 .vscode/
 .idea/
 cache/
 .env.example
 .codacy/codacy.yaml
+browser_context/
+# debug/
