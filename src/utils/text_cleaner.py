@@ -6,8 +6,10 @@ class TextCleaner:
 
     # Regex to find HTML tags
     HTML_TAG_PATTERN = re.compile(r'<[^>]+>')
-    # Regex to find bracketed info, often at the start of transcripts, e.g., (godz. 9:02) or (przerwa)
-    BRACKET_INFO_PATTERN = re.compile(r'^\s*\([^)]*\)\s*')
+    # Regex to find and remove all bracketed content, like (Oklaski) or (Początek posiedzenia...)
+    BRACKET_INFO_PATTERN = re.compile(r'\s*\([^)]*\)\s*')
+    # Regex to find and remove stray metadata, e.g., 'POS: 1 DZIEN: 1'
+    METADATA_PATTERN = re.compile(r'\b([A-Z0-9]+:\s*.*?)(?=\s[A-Z0-9]+:|$)')
     # Regex for multiple whitespace characters
     WHITESPACE_PATTERN = re.compile(r'\s+')
 
@@ -34,21 +36,9 @@ class TextCleaner:
         return unicodedata.normalize('NFC', text)
 
     @staticmethod
-    def remove_session_brackets(text: str) -> str:
-        """
-        Removes bracketed information that typically appears at the beginning of a transcript.
-        This is designed to be non-greedy and only affect the start of the text.
-        """
-        if not text:
-            return ""
-        # This will remove a single occurrence of a bracketed phrase at the start of the string.
-        return TextCleaner.BRACKET_INFO_PATTERN.sub('', text)
-
-    @staticmethod
     def clean_text(
         text: str,
         remove_html: bool = True,
-        remove_brackets: bool = True,
         normalize_chars: bool = True
     ) -> str:
         """
@@ -57,7 +47,6 @@ class TextCleaner:
         Args:
             text: The string to clean.
             remove_html: Whether to remove HTML tags and entities.
-            remove_brackets: Whether to remove initial bracketed session info.
             normalize_chars: Whether to normalize unicode characters.
 
         Returns:
@@ -69,8 +58,11 @@ class TextCleaner:
         if remove_html:
             text = TextCleaner.remove_html_tags(text)
         
-        if remove_brackets:
-            text = TextCleaner.remove_session_brackets(text)
+        # Remove all bracketed content (e.g., applause, session times)
+        text = TextCleaner.BRACKET_INFO_PATTERN.sub(' ', text)
+
+        # Remove stray metadata patterns
+        text = TextCleaner.METADATA_PATTERN.sub('', text)
 
         if normalize_chars:
             text = TextCleaner.normalize_polish_chars(text)
